@@ -1,90 +1,102 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @TeleOp (name = "Beta")
 public class Beta extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
+
         // Declare our motors
         // Make sure your ID's match your configuration
-        DcMotor motorFrontLeft = hardwareMap.dcMotor.get("motorFrontLeft");
-        DcMotor motorBackLeft = hardwareMap.dcMotor.get("motorBackLeft");
-        DcMotor motorFrontRight = hardwareMap.dcMotor.get("motorFrontRight");
-        DcMotor motorBackRight = hardwareMap.dcMotor.get("motorBackRight");
-        DcMotor armLeft = hardwareMap.dcMotor.get("armLeft");
-        DcMotor armRight = hardwareMap.dcMotor.get("armRight");
-        CRServo duck = hardwareMap.crservo.get("duck");
-        Servo gripperLeft = hardwareMap.servo.get("gripperLeft");
-        Servo gripperRight = hardwareMap.servo.get("gripperRight");
+        DcMotor frontLeftMotor = hardwareMap.dcMotor.get("frontLeftMotor");
+        DcMotor backLeftMotor = hardwareMap.dcMotor.get("backLeftMotor");
+        DcMotor frontRightMotor = hardwareMap.dcMotor.get("frontRightMotor");
+        DcMotor backRightMotor = hardwareMap.dcMotor.get("backRightMotor");
+        DcMotor intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
+        Servo intakeLeftServo = hardwareMap.servo.get("intakeLeftServo");
+        Servo intakeRightServo = hardwareMap.servo.get("intakeRightServo");
 
-        // Reverse the right side motors
-        // Reverse left motors if you are using NeveRests
-        motorFrontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        motorBackLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        armLeft.setDirection(DcMotorSimple.Direction.REVERSE);
-        armRight.setDirection(DcMotorSimple.Direction.REVERSE);
+        // Reverse the right side motors. This may be wrong for your setup.
+        // If your robot moves backwards when commanded to go forwards,
+        // reverse the left side instead.
+        // See the note about this earlier on this page.
+        frontRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRightMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        // Retrieve the IMU from the hardware map
+        IMU imu = hardwareMap.get(IMU.class, "imu");
+
+        // Adjust the orientation parameters to match your robot
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
+                RevHubOrientationOnRobot.UsbFacingDirection.UP));
+
+        // Without this, the REV Hub's orientation is assumed to be logo up / USB forward
+        imu.initialize(parameters);
 
         waitForStart();
 
-        gripperLeft.setPosition(0.75);
-        gripperRight.setPosition(0.6);
+        if (isStopRequested()) return;
 
-        while(opModeIsActive()) {
-            double y = -gamepad1.left_stick_y; // Remember, this is reversed!
-            double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+        while (opModeIsActive()) {
+
+            double y = gamepad1.left_stick_y; // Remember, Y stick value is reversed
+            double x = -gamepad1.left_stick_x;
             double rx = gamepad1.right_stick_x;
 
+            // This button choice was made so that it is hard to hit on accident,
+            // it can be freely changed based on preference.
+            // The equivalent button is start on Xbox-style controllers.
+            if (gamepad1.a) {
+                imu.resetYaw();
+            }
+
+            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+
+            // Rotate the movement direction counter to the bot's rotation
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+
+            rotX = rotX * 1.1;  // Counteract imperfect strafing
+
             // Denominator is the largest motor power (absolute value) or 1
-            // This ensures all the powers maintain the same ratio, but only when
-            // at least one is out of the range [-1, 1]
-            double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
-            double frontLeftPower = (y + x + rx) / denominator;
-            double backLeftPower = (y - x + rx) / denominator;
-            double frontRightPower = (y - x - rx) / denominator;
-            double backRightPower = (y + x - rx) / denominator;
+            // This ensures all the powers maintain the same ratio,
+            // but only if at least one is out of the range [-1, 1]
+            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+            double frontLeftPower = (rotY + rotX + rx) / denominator;
+            double backLeftPower = (rotY - rotX + rx) / denominator;
+            double frontRightPower = (rotY - rotX - rx) / denominator;
+            double backRightPower = (rotY + rotX - rx) / denominator;
 
-            motorFrontLeft.setPower(frontLeftPower);
-            motorBackLeft.setPower(backLeftPower);
-            motorFrontRight.setPower(frontRightPower);
-            motorBackRight.setPower(backRightPower);
+            frontLeftMotor.setPower(frontLeftPower);
+            backLeftMotor.setPower(backLeftPower);
+            frontRightMotor.setPower(frontRightPower);
+            backRightMotor.setPower(backRightPower);
 
-            //Arm Up and Down
-            double arm_speed = gamepad2.left_stick_y*0.7;
-            armLeft.setPower(arm_speed);
-            armRight.setPower(arm_speed*-1);
+            double intakeSpeed = gamepad2.left_stick_y;
+            intakeMotor.setPower(intakeSpeed);
 
-            //Carousel Duck Rotation
-            if (gamepad2.x) {
-                duck.setPower(1);
-            } else if (gamepad2.b) {
-                duck.setPower(-1);
-            } else if (gamepad2.a) {
-                duck.setPower(0);
+            if (gamepad2.a) {
+                intakeLeftServo.setPosition(0.475);
+                intakeRightServo.setPosition(0.525);
+
+            } else if (gamepad2.x || gamepad2.b) {
+                intakeLeftServo.setPosition(0.4);
+                intakeRightServo.setPosition(0.6);
+
+            } else if (gamepad2.y) {
+                intakeLeftServo.setPosition(1);
+                intakeRightServo.setPosition(0);
             }
-
-            //Gripper - Pick Up Cubes
-            while (gamepad2.left_bumper==true) {
-                gripperRight.setPosition(0.75);
-                gripperLeft.setPosition(0.5);
-            }
-
-            //Gripper - Drop Cubes
-            while (gamepad2.right_bumper==true) {
-                gripperRight.setPosition(0.6);
-                gripperLeft.setPosition(0.75);
-            }
-
-
-                }
-            }
-            }
-
-
-
-
+        }
+    }
+}
