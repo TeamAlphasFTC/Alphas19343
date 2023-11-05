@@ -10,8 +10,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp (name = "Beta")
-public class Beta extends LinearOpMode {
+@TeleOp (name = "Oakridge")
+public class Oakridge extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
 
@@ -21,9 +21,13 @@ public class Beta extends LinearOpMode {
         DcMotor backLeftMotor = hardwareMap.dcMotor.get("backLeftMotor");
         DcMotor frontRightMotor = hardwareMap.dcMotor.get("frontRightMotor");
         DcMotor backRightMotor = hardwareMap.dcMotor.get("backRightMotor");
-        DcMotor intakeMotor = hardwareMap.dcMotor.get("intakeMotor");
-        Servo intakeLeftServo = hardwareMap.servo.get("intakeLeftServo");
-        Servo intakeRightServo = hardwareMap.servo.get("intakeRightServo");
+        DcMotor armMotor = hardwareMap.dcMotor.get("armMotor");
+        Servo gripperLeftServo = hardwareMap.servo.get("gripperLeftServo");
+        Servo gripperRightServo = hardwareMap.servo.get("gripperRightServo");
+        DcMotor pixelMotor = hardwareMap.dcMotor.get("pixelMotor");
+        Servo pixelLeftServo = hardwareMap.servo.get("pixelLeftServo");
+        Servo pixelRightServo = hardwareMap.servo.get("pixelRightServo");
+
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,
@@ -56,7 +60,7 @@ public class Beta extends LinearOpMode {
             // This button choice was made so that it is hard to hit on accident,
             // it can be freely changed based on preference.
             // The equivalent button is start on Xbox-style controllers.
-            if (gamepad1.a) {
+            if (gamepad1.dpad_up) {
                 imu.resetYaw();
             }
 
@@ -77,26 +81,50 @@ public class Beta extends LinearOpMode {
             double frontRightPower = (rotY - rotX - rx) / denominator;
             double backRightPower = (rotY + rotX - rx) / denominator;
 
-            frontLeftMotor.setPower(frontLeftPower);
-            backLeftMotor.setPower(backLeftPower);
-            frontRightMotor.setPower(frontRightPower);
-            backRightMotor.setPower(backRightPower);
+            frontLeftMotor.setPower(frontLeftPower * 0.7);
+            backLeftMotor.setPower(backLeftPower * 0.7);
+            frontRightMotor.setPower(frontRightPower * 0.7);
+            backRightMotor.setPower(backRightPower * 0.7);
 
-            double intakeSpeed = gamepad2.left_stick_y;
-            intakeMotor.setPower(intakeSpeed*-0.5);
-
-            if (gamepad2.a) {
-                intakeLeftServo.setPosition(0.475);
-                intakeRightServo.setPosition(0.525);
-
-            } else if (gamepad2.x || gamepad2.b) {
-                intakeLeftServo.setPosition(0.4);
-                intakeRightServo.setPosition(0.6);
-
-            } else if (gamepad2.y) {
-                intakeLeftServo.setPosition(1);
-                intakeRightServo.setPosition(0);
+            if (gamepad1.left_trigger > 0) {
+                armMotor.setPower(gamepad1.left_trigger * 0.35);
             }
+
+            else if (gamepad1.right_trigger > 0) {
+                armMotor.setPower(gamepad1.right_trigger * -0.35);
+            }
+
+            if (gamepad1.left_bumper == true) {
+                pixelMotor.setPower(0.7);
+
+            }
+
+            else if (gamepad1.right_bumper == true) {
+                pixelMotor.setPower(0);
+            }
+
+            if (gamepad1.a) {
+                gripperLeftServo.setPosition(0.475);
+                gripperRightServo.setPosition(0.525);
+                }
+
+            else if (gamepad1.y) {
+                gripperLeftServo.setPosition(1);
+                gripperRightServo.setPosition(0);
+                    }
+
+            else if (gamepad1.b) {
+
+                pixelLeftServo.setPosition(1);
+                pixelRightServo.setPosition(0);
+            }
+
+            else if (gamepad1.x) {
+                pixelLeftServo.setPosition(0.41);
+                pixelRightServo.setPosition(0.59);
+
+            }
+
         }
     }
 }
